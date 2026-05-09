@@ -1,0 +1,89 @@
+[
+    {
+        "name": "APT29 (Cozy Bear)",
+        "country": "Russia",
+        "target_industries": [
+            "Government",
+            "Think Tanks",
+            "Healthcare",
+            "Energy"
+        ],
+        "ttps": [
+            "Spearphishing",
+            "Living off the Land",
+            "Supply Chain Compromise"
+        ],
+        "known_malware": [
+            "WellMess",
+            "WellMail",
+            "SolarWinds Backdoor"
+        ],
+        "recent_campaigns": [
+            "SolarWinds Supply Chain Attack",
+            "COVID-19 Vaccine Research Theft"
+        ],
+        "mitre_techniques": [
+            "T1195",
+            "T1078",
+            "T1566"
+        ]
+    },
+    {
+        "name": "Lazarus Group",
+        "country": "North Korea",
+        "target_industries": [
+            "Finance",
+            "Cryptocurrency",
+            "Defense",
+            "Media"
+        ],
+        "ttps": [
+            "Social Engineering",
+            "Custom Malware",
+            "Zero-day exploitation"
+        ],
+        "known_malware": [
+            "Mimikatz",
+            "WannaCry",
+            "Manuscrypt"
+        ],
+        "recent_campaigns": [
+            "Ronin Network Bridge Exploit",
+            "Sony Pictures Hack"
+        ],
+        "mitre_techniques": [
+            "T1566.002",
+            "T1486",
+            "T1190"
+        ]
+    },
+    {
+        "name": "APT41 (Double Dragon)",
+        "country": "China",
+        "target_industries": [
+            "Technology",
+            "Healthcare",
+            "Gaming",
+            "Supply Chain"
+        ],
+        "ttps": [
+            "Supply Chain Attacks",
+            "Advanced Rootkits",
+            "Dynamic C2"
+        ],
+        "known_malware": [
+            "Cobat Strike",
+            "ShadowPad",
+            "PlugX"
+        ],
+        "recent_campaigns": [
+            "Citrix/Zoho Zero-day exploitation",
+            "Project CMS Supply Chain"
+        ],
+        "mitre_techniques": [
+            "T1195.002",
+            "T1190",
+            "T1059"
+        ]
+    }
+]
