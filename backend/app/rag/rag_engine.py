@@ -223,6 +223,9 @@ class CTI_RAG_Engine:
             if not self.embeddings:
                 return False, "Embeddings model not loaded. Check backend logs."
 
+            splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+            chunks = splitter.split_documents(all_docs)
+
             self.vector_store = FAISS.from_documents(chunks, self.embeddings)
             faiss_ret = self.vector_store.as_retriever(search_kwargs={"k": TOP_K})
             bm25_ret = BM25Retriever.from_documents(chunks)
@@ -241,20 +244,24 @@ class CTI_RAG_Engine:
         start_time = time.time()
         try:
             # 1. Retrieval
+            log.info(f"Starting retrieval for: {question}")
             r_start = time.time()
             context_docs = self.ensemble_retriever.invoke(question)
             r_end = time.time()
+            log.info(f"Retrieval finished in {r_end - r_start:.3f}s. Found {len(context_docs)} docs.")
             ctx_text = _format_docs(context_docs)
 
             # 2. Generation
             if not self.llm:
                 return {"answer": "⚠️ AI service (Ollama) is not initialized. Please check connection.", "context": context_docs, "iocs": extract_indicators(ctx_text), "metrics": {}}
 
+            log.info("Starting LLM generation...")
             g_start = time.time()
             try:
                 chain = ({"context": RunnableLambda(lambda _: ctx_text), "question": RunnablePassthrough()} 
                          | CTI_PROMPT | self.llm | StrOutputParser())
                 answer = chain.invoke(question)
+                log.info(f"LLM generation finished in {time.time() - g_start:.3f}s.")
             except Exception as e:
                 log.error(f"Ollama generation error: {e}")
                 return {"answer": f"⚠️ AI service error: {str(e)}. Please ensure Ollama is running.", "context": context_docs, "iocs": extract_indicators(ctx_text), "metrics": {}}
