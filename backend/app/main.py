@@ -1,37 +1,59 @@
+from app import models
 import os
 import time
 import json
 import logging
 import requests
 import re
-from typing import List
+from typing import List, Optional
+from datetime import timedelta
 from dotenv import load_dotenv
+models.Base.metadata.create_all(bind=database.engine)
 
-load_dotenv()
+# FastAPI and Core Imports
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+# Local Imports
 from app.core import database
-from app.models import models
 from app.api import auth
 from app.services import report_generator
-
-# Internal Imports
 from app.rag.rag_engine import CTI_RAG_Engine
 from app.services.threat_classifier import ThreatClassifier
 from app.services.risk_scorer import RiskScorer
+
+# Load environment variables
+load_dotenv()
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("CTI-API")
 
-from fastapi.middleware.cors import CORSMiddleware
-
 app = FastAPI(title="CTI Analyst Backend API")
+
+# --- DATABASE INITIALIZATION EVENT ---
+@app.on_event("startup")
+def startup_event():
+    """
+    Initialize the database on application startup.
+    This ensures models are imported and tables are created properly.
+    """
+    log.info("Checking database initialization...")
+    # Import models here to ensure they are registered with Base.metadata
+    from app.models import models
+    try:
+        # Create tables if they don't exist
+        models.Base.metadata.create_all(bind=database.engine)
+        log.info("Database tables verified/created successfully.")
+    except Exception as e:
+        log.error(f"Database initialization failed: {e}")
+        # In a real production app, you might want to exit if DB is not available
+        # raise e
 
 # Setup CORS
 app.add_middleware(
@@ -43,8 +65,8 @@ app.add_middleware(
         "http://127.0.0.1:3001",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
-        "https://cti-analyst-platform.vercel.app",  # Example Vercel origin
-        "*"  # Fallback for dynamic Vercel previews if needed (use with caution in prod)
+        "https://cti-analyst-platform.vercel.app",
+        "*" 
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -118,6 +140,9 @@ class UserCreate(BaseModel):
 
 @app.post("/auth/register")
 def register_user(user: UserCreate, db: Session = Depends(database.get_db)):
+    # Import models here or use string reference if needed, 
+    # but since it's in startup, app.models should be fine
+    from app.models import models
     db_user = db.query(models.User).filter((models.User.username == user.username) | (models.User.email == user.email)).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username or email already registered")
@@ -131,6 +156,7 @@ def register_user(user: UserCreate, db: Session = Depends(database.get_db)):
 
 @app.post("/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
+    from app.models import models
     # Authenticate via username
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
     # Alternatively authenticate via email if user entered email in username field
@@ -151,13 +177,14 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/auth/me")
-def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
+def read_users_me(current_user: Optional[Session] = Depends(auth.get_current_user)):
+    # auth.get_current_user returns a model instance
     return {"username": current_user.username, "email": current_user.email}
 
 # --- PROTECTED CTI ENDPOINTS ---
 
 @app.post("/index")
-async def index_documents(files: List[UploadFile] = File(...), current_user: models.User = Depends(auth.get_current_user)):
+async def index_documents(files: List[UploadFile] = File(...), current_user: Optional[Session] = Depends(auth.get_current_user)):
     engine = get_engine()
     proxies = []
     for f in files:
@@ -171,7 +198,7 @@ async def index_documents(files: List[UploadFile] = File(...), current_user: mod
     return {"success": True, "message": message, "chunks": engine.chunk_count}
 
 @app.post("/query")
-async def query_intelligence(req: QueryRequest, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+async def query_intelligence(req: QueryRequest, current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
     engine = get_engine()
     if engine.ensemble_retriever is None:
         return {"answer": "⚠️ No documents indexed yet. Please upload files first.", "context": [], "iocs": {}, "metrics": {}}
@@ -189,6 +216,7 @@ async def query_intelligence(req: QueryRequest, current_user: models.User = Depe
     }
     
     # Log query history
+    from app.models import models
     history_entry = models.QueryHistory(user_id=current_user.id, query=req.question, response=result["answer"])
     db.add(history_entry)
     db.commit()
@@ -196,7 +224,7 @@ async def query_intelligence(req: QueryRequest, current_user: models.User = Depe
     return result
 
 @app.post("/rag-query")
-async def rag_query_endpoint(req: QueryRequest, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+async def rag_query_endpoint(req: QueryRequest, current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
     # This is an added endpoint to support the specific RAG frontend implementation
     engine = get_engine()
     if engine.ensemble_retriever is None:
@@ -207,6 +235,7 @@ async def rag_query_endpoint(req: QueryRequest, current_user: models.User = Depe
     result["sources"] = [d.metadata.get('source', 'Unknown Source') for d in result["context"]]
     
     # Log query history
+    from app.models import models
     history_entry = models.QueryHistory(user_id=current_user.id, query=req.question, response=result["answer"])
     db.add(history_entry)
     db.commit()
@@ -214,7 +243,7 @@ async def rag_query_endpoint(req: QueryRequest, current_user: models.User = Depe
     return result
 
 @app.get("/cve")
-async def search_cve(query: str = None, current_user: models.User = Depends(auth.get_current_user)):
+async def search_cve(query: str = None, current_user: Optional[Session] = Depends(auth.get_current_user)):
     clean_query = query.strip() if query else None
     url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch={clean_query}&resultsPerPage=5" if clean_query else \
           "https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=5"
@@ -255,8 +284,7 @@ async def search_cve(query: str = None, current_user: models.User = Depends(auth
         return {"results": [], "error": str(e)}
 
 @app.get("/vuln/{cve_id}")
-async def get_vulnerability(cve_id: str, current_user: models.User = Depends(auth.get_current_user)):
-    # This is an added endpoint to support the specific CVE lookup functionality from the frontend
+async def get_vulnerability(cve_id: str, current_user: Optional[Session] = Depends(auth.get_current_user)):
     url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}"
     try:
         response = requests.get(url, timeout=10)
@@ -281,7 +309,6 @@ async def get_vulnerability(cve_id: str, current_user: models.User = Depends(aut
                 cvss_severity = cvss_data.get("baseSeverity") or m_list[0].get("baseSeverity", "N/A")
                 break
                 
-        # Simulated mitigation
         mitigation = "Apply latest vendor patches. Monitor network traffic for anomalous behavior targeting this vulnerability."
         
         return {
@@ -300,7 +327,7 @@ class ScanRequest(BaseModel):
     language: str = "auto"
 
 @app.post("/scan")
-async def scan_code(req: ScanRequest, current_user: models.User = Depends(auth.get_current_user)):
+async def scan_code(req: ScanRequest, current_user: Optional[Session] = Depends(auth.get_current_user)):
     engine = get_engine()
     if not engine.llm:
         return {"success": False, "error": "LLM engine is unavailable on this deployment."}
@@ -329,14 +356,13 @@ JSON OUTPUT:"""
         return {"success": False, "error": f"AI Scanning service error: {str(e)}. Please ensure Ollama is available."}
 
 @app.post("/classify")
-async def classify_threat(req: ClassifyRequest, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+async def classify_threat(req: ClassifyRequest, current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+    from app.models import models
     cls, conf = _classifier.predict(req.text)
     all_probs = _classifier.get_all_probs(req.text)
     
-    # Calculate simulated severity
     severity = "High" if conf > 0.8 and cls in ["Malware", "Phishing"] else "Medium"
     
-    # Log threat
     threat_entry = models.ThreatLog(user_id=current_user.id, type=cls, severity=severity, source="classification_api")
     db.add(threat_entry)
     db.commit()
@@ -344,12 +370,14 @@ async def classify_threat(req: ClassifyRequest, current_user: models.User = Depe
     return {"category": cls, "confidence": conf, "probabilities": all_probs}
 
 @app.get("/history")
-async def get_history(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+async def get_history(current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+    from app.models import models
     history = db.query(models.QueryHistory).filter(models.QueryHistory.user_id == current_user.id).order_by(models.QueryHistory.timestamp.desc()).all()
     return {"history": [{"id": h.id, "query": h.query, "response": h.response, "timestamp": h.timestamp} for h in history]}
 
 @app.delete("/history/{history_id}")
-async def delete_history(history_id: int, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+async def delete_history(history_id: int, current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+    from app.models import models
     entry = db.query(models.QueryHistory).filter(models.QueryHistory.id == history_id, models.QueryHistory.user_id == current_user.id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="History entry not found")
@@ -359,9 +387,8 @@ async def delete_history(history_id: int, current_user: models.User = Depends(au
     return {"success": True, "message": "Entry deleted"}
 
 @app.post("/report/generate")
-async def generate_report(req: ReportRequest, current_user: models.User = Depends(auth.get_current_user)):
+async def generate_report(req: ReportRequest, current_user: Optional[Session] = Depends(auth.get_current_user)):
     try:
-        # Convert Pydantic model to dict
         data = req.dict()
         pdf_buffer = report_generator.generate_cti_pdf(data)
         
