@@ -1,4 +1,3 @@
-from app import models
 import os
 import time
 import json
@@ -8,7 +7,9 @@ import re
 from typing import List, Optional
 from datetime import timedelta
 from dotenv import load_dotenv
-models.Base.metadata.create_all(bind=database.engine)
+
+# Load environment variables
+load_dotenv()
 
 # FastAPI and Core Imports
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
@@ -21,14 +22,13 @@ from sqlalchemy.orm import Session
 
 # Local Imports
 from app.core import database
+from app.models import models
 from app.api import auth
 from app.services import report_generator
 from app.rag.rag_engine import CTI_RAG_Engine
 from app.services.threat_classifier import ThreatClassifier
 from app.services.risk_scorer import RiskScorer
 
-# Load environment variables
-load_dotenv()
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -44,11 +44,10 @@ def startup_event():
     This ensures models are imported and tables are created properly.
     """
     log.info("Checking database initialization...")
-    # Import models here to ensure they are registered with Base.metadata
-    from app.models import models
     try:
         # Create tables if they don't exist
         models.Base.metadata.create_all(bind=database.engine)
+
         log.info("Database tables verified/created successfully.")
     except Exception as e:
         log.error(f"Database initialization failed: {e}")
@@ -140,9 +139,6 @@ class UserCreate(BaseModel):
 
 @app.post("/auth/register")
 def register_user(user: UserCreate, db: Session = Depends(database.get_db)):
-    # Import models here or use string reference if needed, 
-    # but since it's in startup, app.models should be fine
-    from app.models import models
     db_user = db.query(models.User).filter((models.User.username == user.username) | (models.User.email == user.email)).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username or email already registered")
@@ -156,7 +152,6 @@ def register_user(user: UserCreate, db: Session = Depends(database.get_db)):
 
 @app.post("/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
-    from app.models import models
     # Authenticate via username
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
     # Alternatively authenticate via email if user entered email in username field
@@ -216,7 +211,6 @@ async def query_intelligence(req: QueryRequest, current_user: Optional[Session] 
     }
     
     # Log query history
-    from app.models import models
     history_entry = models.QueryHistory(user_id=current_user.id, query=req.question, response=result["answer"])
     db.add(history_entry)
     db.commit()
@@ -235,7 +229,6 @@ async def rag_query_endpoint(req: QueryRequest, current_user: Optional[Session] 
     result["sources"] = [d.metadata.get('source', 'Unknown Source') for d in result["context"]]
     
     # Log query history
-    from app.models import models
     history_entry = models.QueryHistory(user_id=current_user.id, query=req.question, response=result["answer"])
     db.add(history_entry)
     db.commit()
@@ -357,7 +350,6 @@ JSON OUTPUT:"""
 
 @app.post("/classify")
 async def classify_threat(req: ClassifyRequest, current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
-    from app.models import models
     cls, conf = _classifier.predict(req.text)
     all_probs = _classifier.get_all_probs(req.text)
     
@@ -371,13 +363,11 @@ async def classify_threat(req: ClassifyRequest, current_user: Optional[Session] 
 
 @app.get("/history")
 async def get_history(current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
-    from app.models import models
     history = db.query(models.QueryHistory).filter(models.QueryHistory.user_id == current_user.id).order_by(models.QueryHistory.timestamp.desc()).all()
     return {"history": [{"id": h.id, "query": h.query, "response": h.response, "timestamp": h.timestamp} for h in history]}
 
 @app.delete("/history/{history_id}")
 async def delete_history(history_id: int, current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
-    from app.models import models
     entry = db.query(models.QueryHistory).filter(models.QueryHistory.id == history_id, models.QueryHistory.user_id == current_user.id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="History entry not found")
