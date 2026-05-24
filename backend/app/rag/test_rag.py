@@ -4,6 +4,12 @@ Quick end-to-end test for CTI RAG Engine using new query() API.
 import os
 import sys
 
+# Ensure backend folder is in sys.path so we can import 'app'
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+
 class MockFile:
     """Mimics Streamlit UploadedFile for testing."""
     def __init__(self, name: str, path: str):

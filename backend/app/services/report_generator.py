@@ -1,4 +1,5 @@
 import io
+import html
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -98,17 +99,17 @@ def generate_cti_pdf(data: dict) -> io.BytesIO:
     )
     
     elements.append(Paragraph("Overall Risk Assessment", heading_style))
-    elements.append(Paragraph(f"Score: {risk_score}/100 - Level: {risk_label}", risk_style))
+    elements.append(Paragraph(f"Score: {risk_score}/100 - Level: {html.escape(str(risk_label))}", risk_style))
     elements.append(Spacer(1, 10))
     
     # 3. Query Summary
     elements.append(Paragraph("Query Summary", heading_style))
     query = data.get("query", "No query provided.")
-    elements.append(Paragraph(f"<b>Query:</b> {query}", normal_style))
+    elements.append(Paragraph(f"<b>Query:</b> {html.escape(query)}", normal_style))
     
     response = data.get("query_response", "No response provided.")
-    # Clean up markdown for PDF rendering
-    response = response.replace("\n", "<br/>")
+    # Clean up markdown for PDF rendering, escaping XML special characters while preserving <br/>
+    response = html.escape(response).replace("\n", "<br/>")
     elements.append(Paragraph(f"<b>Response:</b><br/>{response}", normal_style))
     elements.append(Spacer(1, 10))
     
@@ -116,7 +117,7 @@ def generate_cti_pdf(data: dict) -> io.BytesIO:
     elements.append(Paragraph("Threat Classification", heading_style))
     cls = data.get("classification", "N/A")
     conf = data.get("classification_confidence", 0.0)
-    elements.append(Paragraph(f"<b>Category:</b> {cls}", normal_style))
+    elements.append(Paragraph(f"<b>Category:</b> {html.escape(str(cls))}", normal_style))
     elements.append(Paragraph(f"<b>Confidence:</b> {conf * 100:.1f}%", normal_style))
     elements.append(Spacer(1, 10))
     
@@ -128,8 +129,8 @@ def generate_cti_pdf(data: dict) -> io.BytesIO:
             v_id = v.get("id", "Unknown ID")
             v_sev = v.get("severity", "N/A")
             v_desc = v.get("description", "No description.")
-            elements.append(Paragraph(f"<b>{v_id}</b> ({v_sev})", normal_style))
-            elements.append(Paragraph(f"{v_desc}", normal_style))
+            elements.append(Paragraph(f"<b>{html.escape(str(v_id))}</b> ({html.escape(str(v_sev))})", normal_style))
+            elements.append(Paragraph(f"{html.escape(str(v_desc))}", normal_style))
             elements.append(Spacer(1, 5))
     else:
         elements.append(Paragraph("No specific vulnerabilities analyzed.", normal_style))
