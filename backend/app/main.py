@@ -54,10 +54,13 @@ def startup_event():
         # In a real production app, you might want to exit if DB is not available
         # raise e
 
-# Setup CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# FastAPI throws a runtime error if allow_credentials=True is combined with a wildcard '*' origin.
+# Allowed origins are loaded dynamically from environment variables to isolate production domains from local configurations.
+cors_origins_raw = os.getenv("CORS_ORIGINS", "")
+if cors_origins_raw:
+    origins = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
+else:
+    origins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
@@ -65,8 +68,12 @@ app.add_middleware(
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "https://cti-analyst-platform.vercel.app",
-        "*" 
-    ],
+    ]
+
+# Setup CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
