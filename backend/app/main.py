@@ -16,13 +16,14 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage
 from sqlalchemy.orm import Session
 
 # Local Imports
 from app.core import database
-from app.models import models
+from app.models import User, QueryHistory, ThreatLog
 from app.api import auth
 from app.services import report_generator
 from app.rag.rag_engine import CTI_RAG_Engine
@@ -36,23 +37,49 @@ log = logging.getLogger("CTI-API")
 
 app = FastAPI(title="CTI Analyst Backend API")
 
+# Singletons (Initialized on startup)
+_engine = None
+_classifier = ThreatClassifier()
+_risk_scorer = RiskScorer()
+
 # --- DATABASE INITIALIZATION EVENT ---
 @app.on_event("startup")
 def startup_event():
     """
-    Initialize the database on application startup.
-    This ensures models are imported and tables are created properly.
+    Verify database connectivity on startup and eagerly initialize
+    singletons like the CTI_RAG_Engine to prevent thread race conditions.
     """
-    log.info("Checking database initialization...")
+    log.info("Checking database connection...")
     try:
-        # Create tables if they don't exist
-        models.Base.metadata.create_all(bind=database.engine)
+        # Verify connectivity safely
+        database.check_db_connection()
+        log.info("Database connection verified successfully.")
 
-        log.info("Database tables verified/created successfully.")
+        # Eagerly initialize RAG Engine singleton to prevent lazy-load race conditions under load
+        global _engine
+        log.info("Eagerly initializing RAG Engine singleton...")
+        _engine = CTI_RAG_Engine()
+        log.info("RAG Engine singleton loaded successfully.")
+
+        # If using local SQLite, run migrations programmatically for developer convenience
+        if database.SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+            log.info("SQLite database detected. Running migrations automatically...")
+            from alembic.config import Config
+            from alembic import command
+            
+            backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            ini_path = os.path.join(backend_dir, "alembic.ini")
+            
+            cfg = Config(ini_path)
+            cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+            command.upgrade(cfg, "head")
+            log.info("Local SQLite database migrations completed successfully.")
+            
     except Exception as e:
-        log.error(f"Database initialization failed: {e}")
-        # In a real production app, you might want to exit if DB is not available
-        # raise e
+        log.error(f"Database initialization/migration failed: {e}")
+        # CRITICAL: Raise the exception on startup failure so production environments crash
+        # instead of running in a degraded/broken state!
+        raise e
 
 # FastAPI throws a runtime error if allow_credentials=True is combined with a wildcard '*' origin.
 # Allowed origins are loaded dynamically from environment variables to isolate production domains from local configurations.
@@ -79,11 +106,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Singletons (Initialized on first use or startup)
-_engine = None
-_classifier = ThreatClassifier()
-_risk_scorer = RiskScorer()
-
 def get_engine() -> CTI_RAG_Engine:
     global _engine
     if _engine is None:
@@ -91,10 +113,10 @@ def get_engine() -> CTI_RAG_Engine:
     return _engine
 
 class QueryRequest(BaseModel):
-    question: str
+    question: str = Field(..., min_length=1, description="Question query text")
 
 class ClassifyRequest(BaseModel):
-    text: str
+    text: str = Field(..., min_length=1, description="Text snippet to classify")
 
 class VulnerabilityItem(BaseModel):
     id: str
@@ -140,18 +162,18 @@ def health_check():
 # --- AUTH ENDPOINTS ---
 
 class UserCreate(BaseModel):
-    username: str
-    email: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=50, description="Unique alphanumeric username")
+    email: str = Field(..., max_length=100, pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$", description="Valid email address")
+    password: str = Field(..., min_length=6, max_length=72, description="Plaintext password")
 
 @app.post("/auth/register")
 def register_user(user: UserCreate, db: Session = Depends(database.get_db)):
-    db_user = db.query(models.User).filter((models.User.username == user.username) | (models.User.email == user.email)).first()
+    db_user = db.query(User).filter((User.username == user.username) | (User.email == user.email)).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username or email already registered")
     
     hashed_password = auth.get_password_hash(user.password)
-    db_user = models.User(username=user.username, email=user.email, hashed_password=hashed_password)
+    db_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -160,10 +182,10 @@ def register_user(user: UserCreate, db: Session = Depends(database.get_db)):
 @app.post("/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
     # Authenticate via username
-    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    user = db.query(User).filter(User.username == form_data.username).first()
     # Alternatively authenticate via email if user entered email in username field
     if not user:
-        user = db.query(models.User).filter(models.User.email == form_data.username).first()
+        user = db.query(User).filter(User.email == form_data.username).first()
         
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -179,28 +201,28 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/auth/me")
-def read_users_me(current_user: Optional[Session] = Depends(auth.get_current_user)):
-    # auth.get_current_user returns a model instance
+def read_users_me(current_user: User = Depends(auth.get_current_user)):
     return {"username": current_user.username, "email": current_user.email}
 
 # --- PROTECTED CTI ENDPOINTS ---
 
 @app.post("/index")
-async def index_documents(files: List[UploadFile] = File(...), current_user: Optional[Session] = Depends(auth.get_current_user)):
+async def index_documents(files: List[UploadFile] = File(...), current_user: User = Depends(auth.get_current_user)):
     engine = get_engine()
     proxies = []
     for f in files:
         content = await f.read()
         proxies.append(FileProxy(f.filename, content))
     
-    success, message = engine.process_files(proxies)
+    # Run heavy vector-embedding/chunking tasks in threadpool to avoid blocking main event loop
+    success, message = await run_in_threadpool(engine.process_files, proxies)
     if not success:
         raise HTTPException(status_code=500, detail=message)
     
     return {"success": True, "message": message, "chunks": engine.chunk_count}
 
 @app.post("/query")
-async def query_intelligence(req: QueryRequest, current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+def query_intelligence(req: QueryRequest, current_user: User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
     engine = get_engine()
     if engine.ensemble_retriever is None:
         return {"answer": "⚠️ No documents indexed yet. Please upload files first.", "context": [], "iocs": {}, "metrics": {}}
@@ -218,14 +240,14 @@ async def query_intelligence(req: QueryRequest, current_user: Optional[Session] 
     }
     
     # Log query history
-    history_entry = models.QueryHistory(user_id=current_user.id, query=req.question, response=result["answer"])
+    history_entry = QueryHistory(user_id=current_user.id, query=req.question, response=result["answer"])
     db.add(history_entry)
     db.commit()
     
     return result
 
 @app.post("/rag-query")
-async def rag_query_endpoint(req: QueryRequest, current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+def rag_query_endpoint(req: QueryRequest, current_user: User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
     # This is an added endpoint to support the specific RAG frontend implementation
     engine = get_engine()
     if engine.ensemble_retriever is None:
@@ -236,14 +258,14 @@ async def rag_query_endpoint(req: QueryRequest, current_user: Optional[Session] 
     result["sources"] = [d.metadata.get('source', 'Unknown Source') for d in result["context"]]
     
     # Log query history
-    history_entry = models.QueryHistory(user_id=current_user.id, query=req.question, response=result["answer"])
+    history_entry = QueryHistory(user_id=current_user.id, query=req.question, response=result["answer"])
     db.add(history_entry)
     db.commit()
     
     return result
 
 @app.get("/cve")
-async def search_cve(query: str = None, current_user: Optional[Session] = Depends(auth.get_current_user)):
+def search_cve(query: str = None, current_user: User = Depends(auth.get_current_user)):
     clean_query = query.strip() if query else None
     url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch={clean_query}&resultsPerPage=5" if clean_query else \
           "https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=5"
@@ -284,7 +306,7 @@ async def search_cve(query: str = None, current_user: Optional[Session] = Depend
         return {"results": [], "error": str(e)}
 
 @app.get("/vuln/{cve_id}")
-async def get_vulnerability(cve_id: str, current_user: Optional[Session] = Depends(auth.get_current_user)):
+def get_vulnerability(cve_id: str, current_user: User = Depends(auth.get_current_user)):
     url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}"
     try:
         response = requests.get(url, timeout=10)
@@ -327,7 +349,7 @@ class ScanRequest(BaseModel):
     language: str = "auto"
 
 @app.post("/scan")
-async def scan_code(req: ScanRequest, current_user: Optional[Session] = Depends(auth.get_current_user)):
+def scan_code(req: ScanRequest, current_user: User = Depends(auth.get_current_user)):
     engine = get_engine()
     if not engine.llm:
         return {"success": False, "error": "LLM engine is unavailable on this deployment."}
@@ -356,26 +378,26 @@ JSON OUTPUT:"""
         return {"success": False, "error": f"AI Scanning service error: {str(e)}. Please ensure Ollama is available."}
 
 @app.post("/classify")
-async def classify_threat(req: ClassifyRequest, current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+def classify_threat(req: ClassifyRequest, current_user: User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
     cls, conf = _classifier.predict(req.text)
     all_probs = _classifier.get_all_probs(req.text)
     
     severity = "High" if conf > 0.8 and cls in ["Malware", "Phishing"] else "Medium"
     
-    threat_entry = models.ThreatLog(user_id=current_user.id, type=cls, severity=severity, source="classification_api")
+    threat_entry = ThreatLog(user_id=current_user.id, type=cls, severity=severity, source="classification_api")
     db.add(threat_entry)
     db.commit()
     
     return {"category": cls, "confidence": conf, "probabilities": all_probs}
 
 @app.get("/history")
-async def get_history(current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
-    history = db.query(models.QueryHistory).filter(models.QueryHistory.user_id == current_user.id).order_by(models.QueryHistory.timestamp.desc()).all()
+def get_history(current_user: User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+    history = db.query(QueryHistory).filter(QueryHistory.user_id == current_user.id).order_by(QueryHistory.timestamp.desc()).all()
     return {"history": [{"id": h.id, "query": h.query, "response": h.response, "timestamp": h.timestamp} for h in history]}
 
 @app.delete("/history/{history_id}")
-async def delete_history(history_id: int, current_user: Optional[Session] = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
-    entry = db.query(models.QueryHistory).filter(models.QueryHistory.id == history_id, models.QueryHistory.user_id == current_user.id).first()
+def delete_history(history_id: int, current_user: User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+    entry = db.query(QueryHistory).filter(QueryHistory.id == history_id, QueryHistory.user_id == current_user.id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="History entry not found")
     
@@ -384,7 +406,7 @@ async def delete_history(history_id: int, current_user: Optional[Session] = Depe
     return {"success": True, "message": "Entry deleted"}
 
 @app.post("/report/generate")
-async def generate_report(req: ReportRequest, current_user: Optional[Session] = Depends(auth.get_current_user)):
+def generate_report(req: ReportRequest, current_user: User = Depends(auth.get_current_user)):
     try:
         data = req.dict()
         pdf_buffer = report_generator.generate_cti_pdf(data)

@@ -20,7 +20,7 @@ class QueryHistory(Base):
     __tablename__ = "query_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     query = Column(String, nullable=False)
     response = Column(String, nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
@@ -31,7 +31,7 @@ class ThreatLog(Base):
     __tablename__ = "threat_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     type = Column(String, nullable=False) # e.g., 'Phishing', 'Malware'
     severity = Column(String, nullable=False)
     source = Column(String, nullable=False) # 'classification_api'
