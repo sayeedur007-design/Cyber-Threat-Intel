@@ -94,7 +94,7 @@ else:
         "http://127.0.0.1:3001",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
-        "https://cti-analyst-platform.vercel.app",
+        "https://cyber-threat-intel-ashy.vercel.app",
     ]
 
 # Setup CORS
