@@ -1,76 +1,143 @@
-# 🛡️ CTI Analyst Platform
+# 🛡️ CTI Analyst Platform  
 
-An AI-powered Cyber Threat Intelligence platform built using FastAPI, Next.js, LangChain, and Ollama for automated threat analysis, RAG querying, vulnerability intelligence, and analyst reporting.
-
----
-
-## 🚀 Features
-
-- 🔐 JWT Authentication & Secure Analyst Workspaces
-- 🧠 Hybrid RAG Pipeline (FAISS + BM25)
-- 📄 AI-Powered Threat Intelligence Querying
-- ⚠️ Live CVE & Vulnerability Intelligence
-- 📊 Threat Classification & Risk Scoring
-- 📝 Automated PDF Intelligence Report Generation
-- 🗂️ Persistent Analyst History & Audit Logging
-- ⚡ Modern Next.js Dashboard Interface
-- ☁️ GitHub Version Control & CI/CD Ready
-- 🌐 Free Cloud Deployment Support (Render + Vercel)
+> 🚀 AI-Powered Cyber Threat Intelligence & Vulnerability Analysis Platform  
+> Built for security analysts, researchers, and cybersecurity demonstrations.
 
 ---
 
-# 🏗️ Tech Stack
+## 🌐 Live Deployment
 
-## Frontend
-- Next.js 14
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-- Axios
+### 🔗 Production Links
 
-## Backend
-- FastAPI
-- SQLAlchemy
-- Alembic
-- PostgreSQL / SQLite
+- 🌍 **Frontend (Vercel):**  
+  https://cyber-threat-intel-qu0pvd81j-sayeedur007-designs-projects.vercel.app/login
+
+- ⚡ **Backend API (Railway):**  
+  https://railway.com/project/5032e912-e1c8-4f17-874f-c4b45a8e2371
+
+- 🗄️ **PostgreSQL Database (Railway):**  
+  https://railway.com/project/5032e912-e1c8-4f17-874f-c4b45a8e2371/service/b999a216-65e1-44ca-b8ba-f809facb9e1f/database?environmentId=b0d2d06c-17c7-4b51-a54a-bee757e3a900
+
+- 💻 **GitHub Repository:**  
+  https://github.com/sayeedur007-design/Cyber-Threat-Intel
+
+---
+
+# 🧠 About The Project
+
+CTI Analyst Platform is an AI-powered Cyber Threat Intelligence system designed to automate threat analysis, vulnerability intelligence, and security investigation workflows using modern AI + RAG architecture.
+
+The platform combines:
+- 🧠 Retrieval-Augmented Generation (RAG)
+- 🔎 Threat Intelligence Querying
+- ⚠️ CVE & Vulnerability Analysis
+- 📄 Automated Intelligence Reports
+- 📊 Threat Risk Scoring
+- 🔐 Secure Analyst Authentication
+
+---
+
+# ✨ Core Features
+
+## 🔐 Security & Authentication
 - JWT Authentication
-
-## AI / RAG
-- LangChain
-- FAISS
-- BM25
-- Ollama
-- qwen2.5-coder:7b
+- Secure Analyst Workspaces
+- Password Hashing with bcrypt
+- Protected API Routes
+- Persistent Audit Logging
 
 ---
 
-# 🧠 Architecture
+## 🧠 AI & Threat Intelligence
+- Hybrid RAG Pipeline (FAISS + BM25)
+- AI-Powered Threat Querying
+- Threat Actor Intelligence
+- TTP Analysis
+- Threat Classification
+- Risk Scoring Engine
+
+---
+
+## ⚠️ Vulnerability Intelligence
+- Live CVE Analysis
+- Vulnerability Enrichment
+- Threat Correlation
+- Security Context Generation
+
+---
+
+## 📄 Reporting & Analytics
+- Automated PDF Intelligence Reports
+- Analyst Query History
+- Threat Investigation Workflow
+- Modern Dashboard UI
+
+---
+
+# 🏗️ System Architecture
 
 ```text
-Next.js Frontend
-       │
-       ▼
-FastAPI Backend
-       │
- ┌─────┼─────┐
- ▼           ▼
-Database    RAG Engine
-                │
-        ┌───────┴───────┐
-        ▼               ▼
-      FAISS           BM25
+                 ┌──────────────────────┐
+                 │   Next.js Frontend   │
+                 └──────────┬───────────┘
+                            │
+                            ▼
+                 ┌──────────────────────┐
+                 │   FastAPI Backend    │
+                 └──────────┬───────────┘
+                            │
+          ┌─────────────────┼─────────────────┐
+          ▼                                   ▼
+┌──────────────────┐              ┌────────────────────┐
+│ PostgreSQL DB    │              │     RAG Engine     │
+└──────────────────┘              └─────────┬──────────┘
+                                            │
+                          ┌─────────────────┴─────────────────┐
+                          ▼                                   ▼
+                    ┌──────────────┐                  ┌──────────────┐
+                    │    FAISS     │                  │     BM25     │
+                    └──────────────┘                  └──────────────┘
 ```
 
 ---
 
-# 📁 Project Structure
+# 🛠️ Tech Stack
+
+## 🎨 Frontend
+- ⚡ Next.js 14
+- 🟦 TypeScript
+- 🎨 Tailwind CSS
+- 🧩 shadcn/ui
+- 🔗 Axios
+
+---
+
+## ⚙️ Backend
+- 🚀 FastAPI
+- 🗄️ SQLAlchemy
+- 🔄 Alembic
+- 🐘 PostgreSQL
+- 🔐 JWT Authentication
+
+---
+
+## 🤖 AI / RAG Stack
+- 🧠 LangChain
+- 📚 FAISS Vector Store
+- 🔍 BM25 Retrieval
+- 🦙 Ollama
+- 🤖 qwen2.5-coder:7b
+
+---
+
+# 📂 Project Structure
 
 ```text
 CTI/
 │
-├── frontend/                     # Next.js Frontend
+├── frontend/                  # Next.js Frontend
 │
-├── backend/                      # FastAPI Backend
+├── backend/                   # FastAPI Backend
 │   ├── app/
 │   │   ├── api/
 │   │   ├── core/
@@ -85,9 +152,6 @@ CTI/
 │   ├── .env
 │   └── alembic.ini
 │
-├── database/
-│   └── sqlite/
-│
 ├── assets/
 ├── docs/
 └── README.md
@@ -95,9 +159,9 @@ CTI/
 
 ---
 
-# ⚙️ Local Installation
+# ⚡ Local Installation
 
-## 1. Clone Repository
+## 1️⃣ Clone Repository
 
 ```bash
 git clone https://github.com/sayeedur007-design/Cyber-Threat-Intel
@@ -106,7 +170,7 @@ cd Cyber-Threat-Intel
 
 ---
 
-## 2. Backend Setup
+## 2️⃣ Backend Setup
 
 ```bash
 python -m venv venv
@@ -124,23 +188,23 @@ pip install -r requirements.txt
 
 ---
 
-## 3. Configure Environment Variables
+## 3️⃣ Configure Environment Variables
 
-Create a `.env` file inside the `backend/` directory.
-
-Example:
+Create a `.env` file inside `backend/`
 
 ```env
 SECRET_KEY=your_secret_key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
-DATABASE_URL=sqlite:///cti_app.db
+
+DATABASE_URL=postgresql://username:password@host:port/dbname
+
 OLLAMA_BASE_URL=http://localhost:11434
 ```
 
 ---
 
-## 4. Run Database Migrations
+## 4️⃣ Run Database Migrations
 
 ```bash
 alembic upgrade head
@@ -148,7 +212,7 @@ alembic upgrade head
 
 ---
 
-## 5. Start Ollama
+## 5️⃣ Start Ollama
 
 ```bash
 ollama run qwen2.5-coder:7b
@@ -156,19 +220,19 @@ ollama run qwen2.5-coder:7b
 
 ---
 
-## 6. Start Backend
+## 6️⃣ Start Backend
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-Backend runs on:
+### Backend URL
 
 ```text
 http://127.0.0.1:8000
 ```
 
-Swagger Docs:
+### Swagger Documentation
 
 ```text
 http://127.0.0.1:8000/docs
@@ -176,9 +240,7 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## 7. Start Frontend
-
-Open a new terminal:
+## 7️⃣ Start Frontend
 
 ```bash
 cd frontend
@@ -188,7 +250,7 @@ npm install
 npm run dev
 ```
 
-Frontend runs on:
+### Frontend URL
 
 ```text
 http://localhost:3000
@@ -196,84 +258,20 @@ http://localhost:3000
 
 ---
 
-# 🌐 Deployment
+# 🌍 Deployment Stack
 
-## Frontend Deployment (Free)
-
-Deploy the frontend using:
-
-- Vercel
-
-Frontend Root Directory:
-
-```text
-frontend
-```
-
-Environment Variable:
-
-```env
-NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
-```
+| Service | Platform |
+|---|---|
+| 🎨 Frontend | Vercel |
+| ⚙️ Backend | Railway |
+| 🗄️ Database | PostgreSQL (Railway) |
+| 💻 Version Control | GitHub |
 
 ---
 
-## Backend Deployment (Free)
+# 🔍 Example Threat Queries
 
-Deploy the backend using:
-
-- Render
-
-Backend Root Directory:
-
-```text
-backend
-```
-
-Build Command:
-
-```bash
-pip install -r requirements.txt
-```
-
-Start Command:
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
----
-
-## Production URLs
-
-Frontend:
-
-```text
-https://your-frontend.vercel.app
-```
-
-Backend:
-
-```text
-https://your-backend.onrender.com
-```
-
----
-
-# 🤖 Ollama Deployment Note
-
-Ollama-based local LLM inference may not work properly on free cloud hosting platforms due to memory and runtime limitations.
-
-For deployment demos:
-- AI responses can be mocked
-- External LLM APIs can be integrated later
-- Local Ollama works fully during local development
-
----
-
-# 📌 Example Capabilities
-
-## Threat Intelligence Query
+## 🦠 Malware Intelligence
 
 ```text
 What attack techniques are associated with LockBit ransomware?
@@ -281,7 +279,7 @@ What attack techniques are associated with LockBit ransomware?
 
 ---
 
-## CVE Analysis
+## ⚠️ CVE Investigation
 
 ```text
 CVE-2021-44228
@@ -289,61 +287,61 @@ CVE-2021-44228
 
 ---
 
-## Generated Outputs
+## 🎯 Generated Intelligence Outputs
 
-- Threat actor identification
-- TTP analysis
-- Risk scoring
-- Vulnerability intelligence
-- PDF intelligence reports
-
----
-
-# 🔐 Security Features
-
-- JWT-based authentication
-- Password hashing with bcrypt
-- Protected API routes
-- Persistent audit logging
-- ORM-based database security
+- Threat Actor Identification
+- Attack Technique Analysis
+- Risk Scoring
+- Vulnerability Intelligence
+- Security Recommendations
+- PDF Intelligence Reports
 
 ---
 
-# ☁️ GitHub Setup
+# 📸 Platform Highlights
 
-## Initialize Git Repository
-
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-```
-
----
-
-## Connect GitHub Repository
-
-```bash
-git remote add origin https://github.com/sayeedur007-design/Cyber-Threat-Intel
-git branch -M main
-git push -u origin main
-```
+- 🧠 AI Threat Investigation
+- ⚠️ Vulnerability Intelligence
+- 📊 Risk Assessment
+- 📄 Analyst Reporting
+- 🔐 Secure Authentication
+- ☁️ Cloud Deployment Ready
 
 ---
 
-# 📈 Future Improvements
+# 🚀 Future Improvements
 
-- Docker Compose orchestration
-- Redis caching
-- SIEM integrations
-- Elasticsearch support
-- Kubernetes deployment
-- Multi-agent workflows
-- Streaming AI responses
-- Cloud-hosted LLM integration
+- 🐳 Docker Deployment
+- ⚡ Redis Caching
+- 📡 SIEM Integration
+- 🔎 Elasticsearch Support
+- ☸️ Kubernetes Deployment
+- 🤖 Multi-Agent AI Workflows
+- 🌊 Streaming AI Responses
+- ☁️ Hosted LLM APIs
 
 ---
 
-# ⚖️ License
+# 📜 License
 
-This project is developed for educational, research, and cybersecurity demonstration purposes.
+This project is developed for:
+- 🎓 Educational Purposes
+- 🔬 Cybersecurity Research
+- 🛡️ Threat Intelligence Demonstrations
+
+---
+
+# ⭐ Support The Project
+
+If you found this project useful:
+
+🌟 Star the repository  
+🍴 Fork the project  
+🛠️ Contribute improvements  
+
+---
+
+# 👨‍💻 Developer
+
+Developed by **Sayeedur Rahman**  
+Cybersecurity • AI • Threat Intelligence
