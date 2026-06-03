@@ -135,9 +135,17 @@ The platform combines:
 ```text
 CTI/
 │
-├── frontend/                  # Next.js Frontend
+├── frontend/                         # Next.js Frontend
+│   ├── public/
+│   ├── src/
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── package.json
 │
-├── backend/                   # FastAPI Backend
+├── backend/                          # FastAPI Backend
+│   ├── alembic/
+│   │   └── versions/
+│   │
 │   ├── app/
 │   │   ├── api/
 │   │   ├── core/
@@ -145,19 +153,20 @@ CTI/
 │   │   ├── models/
 │   │   ├── rag/
 │   │   ├── services/
+│   │   ├── utils/
+│   │   ├── app.py
 │   │   └── main.py
 │   │
-│   ├── alembic/
 │   ├── requirements.txt
-│   ├── .env
-│   └── alembic.ini
+│   ├── alembic.ini
+│   ├── Procfile
+│   └── runtime.txt
 │
 ├── assets/
 ├── docs/
+├── .gitignore
 └── README.md
 ```
-
----
 
 # ⚡ Local Installation
 
