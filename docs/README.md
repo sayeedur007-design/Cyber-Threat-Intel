@@ -1,11 +1,16 @@
-# 🛡️ CTI Analyst Platform  
+# 🛡️ CTI Analyst Platform
 
 > 🚀 AI-Powered Cyber Threat Intelligence & Vulnerability Analysis Platform  
-> Built for security analysts, researchers, and cybersecurity demonstrations.
+> Built for security analysts, cybersecurity researchers, and threat intelligence workflows.
 
 ---
 
 ## 🌐 Live Deployment
+
+- 🌍 Frontend (Vercel)  
+- ⚡ Backend API (Railway)  
+- 🗄️ PostgreSQL Database (Railway)  
+- 💻 GitHub Repository  
 
 ### 🔗 Production Links
 
@@ -14,9 +19,6 @@
 
 - ⚡ **Backend API (Railway):**  
   https://railway.com/project/5032e912-e1c8-4f17-874f-c4b45a8e2371
-
-- 🗄️ **PostgreSQL Database (Railway):**  
-  https://railway.com/project/5032e912-e1c8-4f17-874f-c4b45a8e2371/service/b999a216-65e1-44ca-b8ba-f809facb9e1f/database?environmentId=b0d2d06c-17c7-4b51-a54a-bee757e3a900
 
 - 💻 **GitHub Repository:**  
   https://github.com/sayeedur007-design/Cyber-Threat-Intel
@@ -34,6 +36,14 @@ The platform combines:
 - 📄 Automated Intelligence Reports
 - 📊 Threat Risk Scoring
 - 🔐 Secure Analyst Authentication
+
+---
+
+# 🎯 Problem Statement
+
+Security analysts face increasing difficulty processing large volumes of cyber threat intelligence, vulnerability data, and adversary tactics manually.
+
+CTI Analyst Platform automates intelligence querying, threat analysis, CVE investigation, and contextual reporting using Retrieval-Augmented Generation (RAG) and AI-driven workflows.
 
 ---
 
@@ -163,10 +173,14 @@ CTI/
 │   └── runtime.txt
 │
 ├── assets/
+│   └── screenshots/
+│
 ├── docs/
 ├── .gitignore
 └── README.md
 ```
+
+---
 
 # ⚡ Local Installation
 
@@ -280,10 +294,10 @@ http://localhost:3000
 
 # 🔍 Example Threat Queries
 
-## 🦠 Malware Intelligence
+## 🎯 Threat Classification
 
 ```text
-What attack techniques are associated with LockBit ransomware?
+Suspicious PowerShell execution with outbound connections to a known malicious IP was detected on an employee workstation.
 ```
 
 ---
@@ -292,6 +306,14 @@ What attack techniques are associated with LockBit ransomware?
 
 ```text
 CVE-2021-44228
+```
+
+---
+
+## 🧠 RAG Threat Intelligence Query
+
+```text
+What initial access and persistence techniques are associated with APT29 according to the MITRE ATT&CK framework?
 ```
 
 ---
@@ -307,14 +329,33 @@ CVE-2021-44228
 
 ---
 
-# 📸 Platform Highlights
+# 📸 Platform Screenshots
 
-- 🧠 AI Threat Investigation
-- ⚠️ Vulnerability Intelligence
-- 📊 Risk Assessment
-- 📄 Analyst Reporting
-- 🔐 Secure Authentication
-- ☁️ Cloud Deployment Ready
+Real-time platform modules showcasing threat analysis, classification, vulnerability intelligence, and AI-powered RAG workflows.
+
+---
+
+## 🏠 Dashboard
+
+![Dashboard](assets/screenshots/dashboard.png)
+
+---
+
+## 🎯 Threat Classification
+
+![Threat Classifier](assets/screenshots/threat-classifier.png)
+
+---
+
+## ⚠️ Vulnerability Intelligence
+
+![Vulnerability Intelligence](assets/screenshots/vulnerability-intelligence.png)
+
+---
+
+## 🧠 RAG Threat Intelligence Query
+
+![RAG Query](assets/screenshots/rag-query.png)
 
 ---
 
